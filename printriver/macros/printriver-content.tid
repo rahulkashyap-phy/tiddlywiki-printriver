@@ -1,0 +1,75 @@
+title: $:/plugins/BTC/PrintRiver/macros/printriver-content.js
+type: application/javascript
+module-type: macro
+
+(function(){
+"use strict";
+
+/*
+Macro: printriver-content
+Returns a valid CSS `content` property value from a text string that may contain
+the following tokens:
+  <<date>>   - current date (DD Mon YYYY), computed at render time
+  <<time>>   - current time (HH:MM), computed at render time
+  <<page>>   - CSS counter(page)
+  <<pages>>  - CSS counter(pages) (total page count)
+*/
+exports.name = "printriver-content";
+exports.params = [{name: "text"}];
+
+exports.run = function(text) {
+	if(!text) return '""';
+
+	var now = new Date();
+	var pad = function(n) { return n < 10 ? "0" + n : String(n); };
+	var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+	var date = pad(now.getDate()) + " " + months[now.getMonth()] + " " + now.getFullYear();
+	var time = pad(now.getHours()) + ":" + pad(now.getMinutes());
+
+	// Replace date/time tokens with computed values (baked in at render time)
+	text = text.replace(/<<date>>/g, date).replace(/<<time>>/g, time);
+
+	var TOKEN_PAGE  = "<<page>>";
+	var TOKEN_PAGES = "<<pages>>";
+
+	var segments = [];
+	var remaining = text;
+
+	while(remaining.length > 0) {
+		var pagesIdx = remaining.indexOf(TOKEN_PAGES);
+		var pageIdx  = remaining.indexOf(TOKEN_PAGE);
+
+		var nextIdx, nextToken, nextType;
+		// Pick whichever token appears first; <<page>> and <<pages>> are distinct strings so they cannot start at the same index
+		if(pagesIdx !== -1 && (pageIdx === -1 || pagesIdx < pageIdx)) {
+			nextIdx = pagesIdx; nextToken = TOKEN_PAGES; nextType = "pages";
+		} else if(pageIdx !== -1) {
+			nextIdx = pageIdx; nextToken = TOKEN_PAGE; nextType = "page";
+		} else {
+			segments.push({type: "text", value: remaining});
+			break;
+		}
+
+		if(nextIdx > 0) {
+			segments.push({type: "text", value: remaining.slice(0, nextIdx)});
+		}
+		segments.push({type: nextType});
+		remaining = remaining.slice(nextIdx + nextToken.length);
+	}
+
+	var parts = [];
+	for(var i = 0; i < segments.length; i++) {
+		var seg = segments[i];
+		if(seg.type === "page") {
+			parts.push("counter(page)");
+		} else if(seg.type === "pages") {
+			parts.push("counter(pages)");
+		} else if(seg.value) {
+			parts.push('"' + seg.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"');
+		}
+	}
+
+	return parts.length > 0 ? parts.join(" ") : '""';
+};
+
+})();

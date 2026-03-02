@@ -188,6 +188,27 @@ tags: $:/tags/Stylesheet
 	}
 }
 
+@page {
+	@top-left {
+		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/header-left}}/>;
+	}
+	@top-center {
+		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/header-center}}/>;
+	}
+	@top-right {
+		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/header-right}}/>;
+	}
+	@bottom-left {
+		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/footer-left}}/>;
+	}
+	@bottom-center {
+		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/footer-center}}/>;
+	}
+	@bottom-right {
+		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/footer-right}}/>;
+	}
+}
+
 <$list filter="[all[tiddlers]prefix[$:/state/PrintRiver/print-title/]]">
 
 <$list filter="[<currentTiddler>get[text]match[no]]" variable="ignore">
