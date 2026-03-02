@@ -1,0 +1,100 @@
+title: $:/plugins/BTC/PrintRiver/usage
+
+!! Overview
+
+''PrintRiver'' opens a dedicated print window that renders a configurable story river — giving you full control over which tiddlers to print, their order, and how the printed page looks.
+
+!! Getting started
+
+# Open the print window by clicking the ''Print'' button (🖨) in any tiddler's toolbar.
+# The print window shows the tiddlers in `$:/PrintList`.
+# Use the toolbar at the top of the print window to adjust layout and content before printing.
+# Click the ''Print'' button (🖨) in the print-window toolbar to send to the printer.
+
+!! Print-window toolbar
+
+|!Button |!What it does |
+|☰ (sort) |Reorder or remove tiddlers in the print list by drag-and-drop. |
+|🖨 (print) |Trigger the browser print dialog. |
+|⚙ (tools) |Open the tools panel to adjust fonts, line-height, and header/footer settings. |
+
+!! Header & Footer
+
+Each printed page can have text in up to six margin positions.  Configure them in the ''Tools → Header/Footer'' panel.
+
+!!! Content tokens
+
+Use these tokens anywhere in a header or footer field:
+
+|!Token |!Replaced with |!Example output |
+|`<<date>>` |Current date at print time |`02 Mar 2026` |
+|`<<time>>` |Current time (12-hour, AM/PM) |`9:05 AM` |
+|`<<page>>` |Current page number |`3` |
+|`<<pages>>` |Total number of pages |`5` |
+
+Tokens can be combined with plain text, e.g. `Page <<page>> of <<pages>>`.
+
+!!! Positions & defaults
+
+|!Config tiddler |!Position |!Default value |
+|`$:/config/PrintRiver/header-left` |Top-left of every page |`<<date>> <<time>>` |
+|`$:/config/PrintRiver/header-center` |Top-centre of every page |`TiddlyWiki5 - PrintRiver` |
+|`$:/config/PrintRiver/header-right` |Top-right of every page |''(empty)'' |
+|`$:/config/PrintRiver/footer-left` |Bottom-left of every page |''(empty)'' |
+|`$:/config/PrintRiver/footer-center` |Bottom-centre of every page |''(empty)'' |
+|`$:/config/PrintRiver/footer-right` |Bottom-right of every page |`<<page>>/<<pages>>` |
+
+> ''Note:'' Disable the browser's built-in "Headers and footers" option in the print dialog to avoid overlap with these CSS margin-box settings.
+
+!!! Header & Footer Style
+
+A single set of style settings applies to all six positions.  Leave any field empty to inherit the browser default.
+
+|!Config tiddler |!CSS property |!Example value |
+|`$:/config/PrintRiver/header-footer-fontsize` |`font-size` |`9pt`, `11px`, `0.8em` |
+|`$:/config/PrintRiver/header-footer-fontfamily` |`font-family` |`Arial, sans-serif`, `Georgia, serif` |
+|`$:/config/PrintRiver/header-footer-color` |`color` |`#555`, `gray`, `darkblue` |
+
+!! River-level typography
+
+These settings apply to the entire print story river (all tiddlers).
+
+|!Config tiddler |!CSS property |!Example value |
+|`$:/config/PrintRiver/fontsize` |`font-size` |`12pt`, `14px`, `1em` |
+|`$:/config/PrintRiver/lineheight` |`line-height` |`1.5`, `1.8`, `24px` |
+
+!! Tiddler body typography
+
+These settings apply only to the body text inside each tiddler, overriding the river-level values.
+
+|!Config tiddler |!CSS property |!Example value |
+|`$:/config/PrintRiver/tiddler-body-fontsize` |`font-size` |`11pt`, `13px` |
+|`$:/config/PrintRiver/tiddler-body-lineheight` |`line-height` |`1.6`, `22px` |
+
+!! Per-tiddler controls
+
+Each tiddler in the print window has a small control bar.  Toggle:
+
+|!Control |!What it does |
+|title |Show or hide the tiddler title. |
+|subtitle |Show or hide the tiddler subtitle. |
+|tags |Show or hide the tiddler tags. |
+|text |Center-align the tiddler body text. |
+|break |Insert a page break before this tiddler. |
+
+!! Complete config tiddler reference
+
+|!Config tiddler |!Purpose |!Default |
+|`$:/config/PrintRiver/fontsize` |River font size |''(browser default)'' |
+|`$:/config/PrintRiver/lineheight` |River line height |''(browser default)'' |
+|`$:/config/PrintRiver/tiddler-body-fontsize` |Tiddler body font size |''(browser default)'' |
+|`$:/config/PrintRiver/tiddler-body-lineheight` |Tiddler body line height |''(browser default)'' |
+|`$:/config/PrintRiver/header-left` |Header left content |`<<date>> <<time>>` |
+|`$:/config/PrintRiver/header-center` |Header centre content |`TiddlyWiki5 - PrintRiver` |
+|`$:/config/PrintRiver/header-right` |Header right content |''(empty)'' |
+|`$:/config/PrintRiver/footer-left` |Footer left content |''(empty)'' |
+|`$:/config/PrintRiver/footer-center` |Footer centre content |''(empty)'' |
+|`$:/config/PrintRiver/footer-right` |Footer right content |`<<page>>/<<pages>>` |
+|`$:/config/PrintRiver/header-footer-fontsize` |Header/footer font size |''(browser default)'' |
+|`$:/config/PrintRiver/header-footer-fontfamily` |Header/footer font family |''(browser default)'' |
+|`$:/config/PrintRiver/header-footer-color` |Header/footer text colour |''(browser default)'' |

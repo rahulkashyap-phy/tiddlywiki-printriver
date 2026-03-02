@@ -1,0 +1,45 @@
+title: $:/plugins/BTC/PrintRiver/ui/Buttons/header-footer
+tags: $:/tags/PrintToolbar/Tools
+
+''Header/Footer'' <small>(tokens: `<<date>>` `<<time>>` `<<page>>` `<<pages>>`)</small>
+<table>
+<tr>
+<th>Header</th>
+<th>Left</th>
+<th>Center</th>
+<th>Right</th>
+</tr>
+<tr>
+<td/>
+<td><$edit-text tiddler="$:/config/PrintRiver/header-left" default="" tag="input" size="18"/></td>
+<td><$edit-text tiddler="$:/config/PrintRiver/header-center" default="" tag="input" size="18"/></td>
+<td><$edit-text tiddler="$:/config/PrintRiver/header-right" default="" tag="input" size="18"/></td>
+</tr>
+<tr>
+<th>Footer</th>
+<th>Left</th>
+<th>Center</th>
+<th>Right</th>
+</tr>
+<tr>
+<td/>
+<td><$edit-text tiddler="$:/config/PrintRiver/footer-left" default="" tag="input" size="18"/></td>
+<td><$edit-text tiddler="$:/config/PrintRiver/footer-center" default="" tag="input" size="18"/></td>
+<td><$edit-text tiddler="$:/config/PrintRiver/footer-right" default="" tag="input" size="18"/></td>
+</tr>
+</table>
+''Header/Footer Style''
+<table>
+<tr>
+<th>Font size</th>
+<td><$edit-text tiddler="$:/config/PrintRiver/header-footer-fontsize" default="" tag="input" placeholder="e.g. 9pt" size="14"/></td>
+</tr>
+<tr>
+<th>Font family</th>
+<td><$edit-text tiddler="$:/config/PrintRiver/header-footer-fontfamily" default="" tag="input" placeholder="e.g. Arial, sans-serif" size="22"/></td>
+</tr>
+<tr>
+<th>Color</th>
+<td><$edit-text tiddler="$:/config/PrintRiver/header-footer-color" default="" tag="input" placeholder="e.g. #333 or gray" size="14"/></td>
+</tr>
+</table>
