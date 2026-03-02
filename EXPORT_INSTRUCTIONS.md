@@ -91,18 +91,23 @@ git clone exports/tw2tex-export.bundle tw2tex-local \
 
 ## Branch `tw2tex` in the current repository
 
-The same commits are also available on the **`tw2tex`** branch of
-`rahulkashyap-phy/tiddlywiki-printriver`:
+All commits are already on the `copilot/convert-markdown-html-to-tex` branch.
+To create the **`tw2tex`** branch in `tiddlywiki-printriver`, run **one command**
+(no clone needed):
 
 ```bash
-# To create the tw2tex repo directly from this branch:
-git clone --branch tw2tex \
-  https://github.com/rahulkashyap-phy/tiddlywiki-printriver.git tw2tex-local
-
-cd tw2tex-local
-git remote set-url origin https://github.com/rahulkashyap-phy/tw2tex.git
-git push --set-upstream origin HEAD:main
+# From any machine that has the repo cloned, or via GitHub CLI:
+git push origin origin/copilot/convert-markdown-html-to-tex:refs/heads/tw2tex
 ```
+
+Or via the **GitHub web UI**:
+1. Go to **Code → Branches**
+2. Click **New branch**
+3. Name it `tw2tex`, base it on `copilot/convert-markdown-html-to-tex`
+4. Click **Create branch**
+
+After that step the branch `tw2tex` will exist on GitHub with the full commit
+history, and you can proceed with the export instructions above.
 
 ---
 
