@@ -53,12 +53,16 @@ function escPath(p) {
 
 /**
  * Escape URLs for use inside \href{}{}.
- * hyperref handles most URL characters; % must be escaped to avoid
- * being treated as a LaTeX comment.
+ * Uses a single-pass replacement to avoid re-escaping characters introduced
+ * by earlier substitutions.
+ * - % → \% (prevents LaTeX treating it as a comment)
+ * - \ → \textbackslash{} (prevents stray LaTeX commands)
  */
 function escUrl(url) {
 	if(!url) return "";
-	return String(url).replace(/%/g, "\\%");
+	return String(url).replace(/[\\%]/g, function(ch) {
+		return ch === "\\" ? "\\textbackslash{}" : "\\%";
+	});
 }
 
 module.exports = { esc, escPath, escUrl };

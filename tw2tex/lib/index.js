@@ -36,18 +36,61 @@ function extractMermaidBlocks(rawText) {
 	return blocks;
 }
 
+/* ── math pre-processor for raw Markdown ─────────────────────────────── */
+
+/**
+ * Replace raw `$$...$$` and `$...$` math delimiters with synthetic
+ * HTML that the DOM walker in converter.js understands.
+ *
+ * This is only needed for the standalone Node.js tool.  The TiddlyWiki
+ * browser plugin version never reaches this code because TW already
+ * renders math through KaTeX before we see the HTML.
+ *
+ * Display math:  $$...$$  →  <span class="katex-display"><span class="katex">
+ *                              <annotation encoding="application/x-tex">…</annotation>
+ *                             </span></span>
+ * Inline math:   $...$    →  <span class="katex">
+ *                              <annotation encoding="application/x-tex">…</annotation>
+ *                             </span>
+ */
+function mathToHtml(text) {
+	if(!text) return text;
+
+	// Display math first (must run before inline to avoid partial matches)
+	text = text.replace(/\$\$([\s\S]*?)\$\$/g, function(_m, src) {
+		const encoded = src.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		return '<span class="katex-display"><span class="katex">' +
+			'<annotation encoding="application/x-tex">' + encoded + "</annotation>" +
+			"</span></span>";
+	});
+
+	// Inline math  ($...$) – do not match across newlines to avoid false positives
+	text = text.replace(/\$([^$\n]+?)\$/g, function(_m, src) {
+		const encoded = src.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		return '<span class="katex">' +
+			'<annotation encoding="application/x-tex">' + encoded + "</annotation>" +
+			"</span>";
+	});
+
+	return text;
+}
+
 /* ── tiddler body → HTML ─────────────────────────────────────────────── */
 
 /**
  * Render a tiddler's text body to HTML.
  * Supports plain Markdown (default) and passes raw HTML through unchanged.
+ * Applies math pre-processing for `$$...$$` / `$...$` notation.
  */
 function renderBodyToHtml(tiddler) {
 	const type = tiddler.type || "";
-	const text = tiddler.text || "";
+	let text = tiddler.text || "";
 
 	// Raw HTML types
 	if(type === "text/html") return text;
+
+	// Pre-process raw math notation before passing to Markdown renderer
+	text = mathToHtml(text);
 
 	// Markdown (tiddlywiki/markdown, text/x-markdown, text/markdown, or plain/default)
 	return marked.parse(text);
