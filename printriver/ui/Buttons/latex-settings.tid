@@ -1,0 +1,20 @@
+title: $:/plugins/BTC/PrintRiver/ui/Buttons/latex-settings
+tags: $:/tags/PrintToolbar/Tools
+
+''LaTeX Export Settings''
+<table>
+<tr>
+<th>Document class</th>
+<td><$edit-text tiddler="$:/config/PrintRiver/latex-documentclass" default="article" tag="input" placeholder="article" size="14"/></td>
+</tr>
+<tr>
+<th>Paper size</th>
+<td><$edit-text tiddler="$:/config/PrintRiver/latex-paper" default="a4paper" tag="input" placeholder="a4paper" size="14"/></td>
+</tr>
+<tr>
+<th>Font size</th>
+<td><$edit-text tiddler="$:/config/PrintRiver/latex-fontsize" default="11pt" tag="input" placeholder="11pt" size="10"/></td>
+</tr>
+</table>
+''Extra Preamble'' <small>(additional <code>\usepackage</code> commands or definitions)</small>
+<$edit-text tiddler="$:/config/PrintRiver/latex-extra-preamble" default="" tag="textarea" rows="5" cols="42" placeholder="\usepackage{...}&#10;\newcommand{...}{...}"/>

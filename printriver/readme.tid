@@ -13,6 +13,7 @@ title: $:/plugins/BTC/PrintRiver/readme
 * ''River-level typography'' — override the font size and line height for the entire print river.
 * ''Per-tiddler typography'' — separately tune tiddler body font size and line height.
 * ''Per-tiddler controls'' — toggle title / subtitle / tags visibility, enable page breaks, or centre-align body text on a tiddler-by-tiddler basis.
+* ''LaTeX export'' — download the print list as a compilable `.tex` file, with headings, lists, tables, figures, numbered equations (via `\label{}`), mermaid → TikZ stubs, and tiddler cross-references all handled automatically.
 
 !! Installation
 

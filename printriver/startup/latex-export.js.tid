@@ -1,0 +1,525 @@
+title: $:/plugins/BTC/PrintRiver/startup/latex-export.js
+type: application/javascript
+module-type: startup
+
+/*\
+Startup module: registers the `tm-export-latex` message handler.
+
+When triggered (e.g. from the "Export LaTeX" button), it collects the
+tiddlers listed in $:/PrintList, renders each one to HTML, converts the
+HTML to LaTeX, and downloads the result as a .tex file.
+
+Supported features
+------------------
+* Headings  → \section / \subsection / \subsubsection / ...
+* Bold / italic / underline / strikethrough / super / sub
+* Inline and display code → \texttt{} / verbatim
+* Bullet and numbered lists → itemize / enumerate
+* Tables  → tabular (with \hline borders)
+* Figures / img → figure with \includegraphics
+* KaTeX / MathJax math:
+    - annotation with \label{} → equation (numbered)
+    - annotation without \label{} → equation*
+    - display math without annotation → \[ … \]
+    - inline math → $ … $
+* Mermaid diagrams → TikZ stub (mermaid source preserved as comments)
+* Tiddler links → \hyperref[sec:…]{} for tiddlers in the print list
+* External links → \href{url}{text}
+* Document class, paper size, font size and extra preamble are read
+  from $:/config/PrintRiver/latex-* tiddlers.
+\*/
+
+(function() {
+"use strict";
+
+exports.name = "printriver-latex-export";
+exports.platforms = ["browser"];
+exports.after = ["rootwidget"];
+exports.synchronous = true;
+
+exports.startup = function() {
+	$tw.rootWidget.addEventListener("tm-export-latex", function() {
+		exportLatex();
+	});
+};
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
+
+function getConfig(key, defaultValue) {
+	var t = $tw.wiki.getTiddler("$:/config/PrintRiver/" + key);
+	return (t && t.fields.text) ? t.fields.text.trim() : defaultValue;
+}
+
+function getPrintList() {
+	var t = $tw.wiki.getTiddler("$:/PrintList");
+	if(!t || !t.fields.list) return [];
+	return $tw.utils.parseStringArray(t.fields.list) || [];
+}
+
+function isTitleVisible(title) {
+	var t = $tw.wiki.getTiddler("$:/state/PrintRiver/print-title/" + title);
+	return !(t && t.fields.text === "no");
+}
+
+/**
+ * Escape characters that are special in LaTeX.
+ * Uses a single-pass replacement to avoid double-escaping backslashes.
+ */
+function esc(text) {
+	return text.replace(/[\\{}$&%#_^~<>]/g, function(ch) {
+		switch(ch) {
+			case "\\": return "\\textbackslash{}";
+			case "{":  return "\\{";
+			case "}":  return "\\}";
+			case "$":  return "\\$";
+			case "&":  return "\\&";
+			case "%":  return "\\%";
+			case "#":  return "\\#";
+			case "_":  return "\\_";
+			case "^":  return "\\textasciicircum{}";
+			case "~":  return "\\textasciitilde{}";
+			case "<":  return "\\textless{}";
+			case ">":  return "\\textgreater{}";
+			default:   return ch;
+		}
+	});
+}
+
+/** Derive a stable LaTeX label from a tiddler title. */
+function titleToLabel(title) {
+	return "sec:" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+/**
+ * Minimal escaping for file-system paths used in \includegraphics{}.
+ * Only escapes characters that are special in LaTeX even inside the
+ * graphicx path argument (%, #, {, }).  Underscores and spaces are
+ * left intact because modern LaTeX / graphicx handles them correctly.
+ */
+function escPath(p) {
+	return p.replace(/[%#{}\\]/g, function(ch) {
+		switch(ch) {
+			case "%":  return "\\%";
+			case "#":  return "\\#";
+			case "{":  return "\\{";
+			case "}":  return "\\}";
+			case "\\": return "\\textbackslash{}";
+			default:   return ch;
+		}
+	});
+}
+
+/**
+ * Minimal escaping for URLs inside \href{}{}.
+ * hyperref handles most URL characters, but a bare % sign is treated as a
+ * LaTeX comment and must be escaped as \%.
+ */
+function escUrl(url) {
+	return url.replace(/%/g, "\\%");
+}
+
+/* ── mermaid source extraction ───────────────────────────────────────── */
+
+/**
+ * Return an array of mermaid source strings found in raw tiddler text.
+ * Looks for both fenced code blocks (```mermaid … ```) and
+ * the $tw mermaid macro syntax (<$mermaid …>).
+ */
+function extractMermaidBlocks(rawText) {
+	if(!rawText) return [];
+	var blocks = [];
+	var fenceRe = /```mermaid\r?\n([\s\S]*?)```/g;
+	var m;
+	while((m = fenceRe.exec(rawText)) !== null) {
+		blocks.push(m[1].trim());
+	}
+	return blocks;
+}
+
+/* ── math handling ───────────────────────────────────────────────────── */
+
+function mathAnnotation(node) {
+	var ann = node.querySelector("annotation[encoding='application/x-tex']");
+	return ann ? ann.textContent : null;
+}
+
+/** True when the LaTeX string already opens a named math environment. */
+function hasOwnEnv(latex) {
+	return /^\\begin\{(equation|align|gather|multline|flalign|alignat|eqnarray)[*]?\}/.test(
+		latex.trim()
+	);
+}
+
+function displayMath(latex) {
+	if(!latex) return "";
+	if(hasOwnEnv(latex)) return "\n" + latex + "\n\n";
+	if(/\\label\{/.test(latex)) {
+		return "\n\\begin{equation}\n" + latex + "\n\\end{equation}\n\n";
+	}
+	return "\n\\[\n" + latex + "\n\\]\n\n";
+}
+
+function inlineMath(latex) {
+	if(!latex) return "";
+	return "$" + latex + "$";
+}
+
+/* ── label counters ──────────────────────────────────────────────────── */
+
+/** Counters reset at the start of each full export. */
+var _labelCounters = {};
+
+function nextLabel(prefix) {
+	_labelCounters[prefix] = (_labelCounters[prefix] || 0) + 1;
+	return prefix + _labelCounters[prefix];
+}
+
+/* ── table conversion ────────────────────────────────────────────────── */
+
+function convertTable(tableNode, printList) {
+	var rows = Array.from(tableNode.querySelectorAll("tr"));
+	if(!rows.length) return "";
+
+	// determine max column count (accounting for colspan)
+	var colCount = 0;
+	Array.from(rows[0].querySelectorAll("th,td")).forEach(function(cell) {
+		colCount += parseInt(cell.getAttribute("colspan") || "1", 10);
+	});
+	if(colCount === 0) colCount = 1;
+
+	var colSpec = Array(colCount).fill("l").join("|");
+	var result = "\n\\begin{table}[h!]\n\\centering\n\\begin{tabular}{|" + colSpec + "|}\n\\hline\n";
+
+	rows.forEach(function(row) {
+		var cells = Array.from(row.querySelectorAll("th,td"));
+		var line = cells.map(function(cell) {
+			return nodeToLatex(cell, printList).trim();
+		}).join(" & ");
+		// bold header cells
+		if(cells.length && cells[0].tagName.toLowerCase() === "th") {
+			line = cells.map(function(cell) {
+				return "\\textbf{" + nodeToLatex(cell, printList).trim() + "}";
+			}).join(" & ");
+		}
+		result += line + " \\\\\n\\hline\n";
+	});
+
+	result += "\\end{tabular}\n";
+
+	var caption = tableNode.querySelector("caption");
+	var captionText = caption ? esc(caption.textContent) : "";
+	result += "\\caption{" + captionText + "}\n";
+	result += "\\label{" + nextLabel("tab:") + "}\n\\end{table}\n";
+	return result;
+}
+
+/* ── figure / image conversion ───────────────────────────────────────── */
+
+function convertFigure(figureNode, printList) {
+	var imgEl = figureNode.querySelector("img");
+	var captionEl = figureNode.querySelector("figcaption");
+	var caption = captionEl ? esc(captionEl.textContent) : "";
+	var src = imgEl ? escPath(imgEl.getAttribute("src") || "") : "";
+	var alt = imgEl ? esc(imgEl.getAttribute("alt") || "") : "";
+	return "\n\\begin{figure}[h!]\n\\centering\n" +
+		"\\includegraphics[width=0.8\\linewidth]{" + src + "}\n" +
+		"\\caption{" + (caption || alt) + "}\n" +
+		"\\label{" + nextLabel("fig:") + "}\n\\end{figure}\n";
+}
+
+function convertImg(imgNode) {
+	var src = escPath(imgNode.getAttribute("src") || "");
+	var alt = esc(imgNode.getAttribute("alt") || "");
+	if(!src) return "";
+	return "\n\\begin{figure}[h!]\n\\centering\n" +
+		"\\includegraphics[width=0.8\\linewidth]{" + src + "}\n" +
+		"\\caption{" + alt + "}\n" +
+		"\\label{" + nextLabel("fig:") + "}\n\\end{figure}\n";
+}
+
+/* ── core DOM → LaTeX walker ─────────────────────────────────────────── */
+
+function nodeToLatex(node, printList, mermaidBlocks, mermaidIndex) {
+	if(node.nodeType === 3) { // TEXT_NODE
+		return esc(node.textContent);
+	}
+	if(node.nodeType !== 1) return ""; // not an ELEMENT_NODE
+
+	var tag = node.tagName.toLowerCase();
+
+	// helper: recurse into children
+	var children = function() {
+		return Array.from(node.childNodes).map(function(n) {
+			return nodeToLatex(n, printList, mermaidBlocks, mermaidIndex);
+		}).join("");
+	};
+
+	switch(tag) {
+		/* ── structure ───────────────────────────────────────────────── */
+		case "h1": return "\n\\section{" + children() + "}\n";
+		case "h2": return "\n\\subsection{" + children() + "}\n";
+		case "h3": return "\n\\subsubsection{" + children() + "}\n";
+		case "h4": return "\n\\paragraph{" + children() + "}\n";
+		case "h5": return "\n\\subparagraph{" + children() + "}\n";
+		case "h6": return "\n\\textbf{" + children() + "}\n\n";
+
+		case "p":
+			return "\n" + children() + "\n";
+		case "br":
+			return "\\\\\n";
+		case "hr":
+			return "\n\\hrulefill\n\n";
+
+		/* ── inline formatting ───────────────────────────────────────── */
+		case "strong": case "b":
+			return "\\textbf{" + children() + "}";
+		case "em": case "i":
+			return "\\textit{" + children() + "}";
+		case "u":
+			return "\\underline{" + children() + "}";
+		case "s": case "strike": case "del":
+			return "\\sout{" + children() + "}";
+		case "sup":
+			return "\\textsuperscript{" + children() + "}";
+		case "sub":
+			return "\\textsubscript{" + children() + "}";
+
+		/* ── code ────────────────────────────────────────────────────── */
+		case "code":
+			if(node.parentNode && node.parentNode.tagName.toLowerCase() === "pre") {
+				return node.textContent; // raw text; handled by pre
+			}
+			return "\\texttt{" + esc(node.textContent) + "}";
+
+		case "pre": {
+			var codeEl = node.querySelector("code");
+			var rawContent = codeEl ? codeEl.textContent : node.textContent;
+			// detect mermaid fenced block
+			var isMermaid = (codeEl && codeEl.classList.contains("language-mermaid")) ||
+			                node.classList.contains("mermaid");
+			if(isMermaid) {
+				var mSrc = rawContent.trim();
+				return "\n% Mermaid diagram – replace with TikZ:\n" +
+					"\\begin{tikzpicture}\n" +
+					"% " + mSrc.replace(/\n/g, "\n% ") + "\n" +
+					"% TODO: convert mermaid to TikZ\n" +
+					"\\end{tikzpicture}\n\n";
+			}
+			return "\n\\begin{verbatim}\n" + rawContent + "\n\\end{verbatim}\n";
+		}
+
+		/* ── blockquote ──────────────────────────────────────────────── */
+		case "blockquote":
+			return "\n\\begin{quote}\n" + children() + "\n\\end{quote}\n";
+
+		/* ── lists ───────────────────────────────────────────────────── */
+		case "ul":
+			return "\n\\begin{itemize}\n" + children() + "\\end{itemize}\n";
+		case "ol":
+			return "\n\\begin{enumerate}\n" + children() + "\\end{enumerate}\n";
+		case "li":
+			return "\\item " + children().trim() + "\n";
+
+		/* ── table ───────────────────────────────────────────────────── */
+		case "table":
+			return convertTable(node, printList);
+
+		/* ── figures / images ────────────────────────────────────────── */
+		case "figure":
+			return convertFigure(node, printList);
+		case "img":
+			// skip images that are inside a figure (handled by figure)
+			if(node.parentNode && node.parentNode.tagName.toLowerCase() === "figure") {
+				return "";
+			}
+			return convertImg(node);
+
+		/* ── links ───────────────────────────────────────────────────── */
+		case "a": {
+			var href = node.getAttribute("href") || "";
+			var linkText = children();
+			// TiddlyWiki tiddler links have data-tw-tiddler or encode the title in href
+			var tiddlerTitle = node.getAttribute("data-tw-tiddler") ||
+			                   (href.indexOf("#") === 0
+			                       ? decodeURIComponent(href.slice(1))
+			                       : null);
+			if(tiddlerTitle && printList.indexOf(tiddlerTitle) !== -1) {
+				return "\\hyperref[" + titleToLabel(tiddlerTitle) + "]{" + linkText + "}";
+			}
+			if(tiddlerTitle) {
+				// reference to a tiddler NOT in the print list – plain text + footnote
+				return linkText + "\\footnote{Tiddler: " + esc(tiddlerTitle) + "}";
+			}
+			if(href && href.indexOf("://") !== -1) {
+				return "\\href{" + escUrl(href) + "}{" + linkText + "}";
+			}
+			return linkText;
+		}
+
+		/* ── math (KaTeX / MathJax) ──────────────────────────────────── */
+		case "span": {
+			// katex-display wraps a katex span – handle at this level
+			if(node.classList.contains("katex-display")) {
+				var ann = mathAnnotation(node);
+				return displayMath(ann);
+			}
+			if(node.classList.contains("katex")) {
+				// check if parent is katex-display (already handled)
+				var parentCls = node.parentNode && node.parentNode.classList;
+				if(parentCls && parentCls.contains("katex-display")) return "";
+				var annInline = mathAnnotation(node);
+				return annInline ? inlineMath(annInline) : children();
+			}
+			return children();
+		}
+
+		case "div": {
+			if(node.classList.contains("katex-display") || node.classList.contains("katex")) {
+				var annDiv = mathAnnotation(node);
+				return displayMath(annDiv);
+			}
+			// mermaid rendered as div
+			if(node.classList.contains("mermaid")) {
+				var mBlocks = mermaidBlocks || [];
+				var mIdx = (mermaidIndex && mermaidIndex.val !== undefined) ? mermaidIndex : {val: 0};
+				var mCode = mBlocks[mIdx.val] || "";
+				mIdx.val++;
+				if(mCode) {
+					return "\n% Mermaid diagram – replace with TikZ:\n" +
+						"\\begin{tikzpicture}\n" +
+						"% " + mCode.replace(/\n/g, "\n% ") + "\n" +
+						"% TODO: convert mermaid to TikZ\n" +
+						"\\end{tikzpicture}\n\n";
+				}
+			}
+			return children();
+		}
+
+		/* ── MathML (MathJax output) ─────────────────────────────────── */
+		case "math": {
+			var annMath = mathAnnotation(node);
+			if(annMath) {
+				var isBlock = node.getAttribute("display") === "block";
+				return isBlock ? displayMath(annMath) : inlineMath(annMath);
+			}
+			return children();
+		}
+
+		/* ── skip non-content elements ───────────────────────────────── */
+		case "script": case "style": case "svg":
+			return "";
+
+		default:
+			return children();
+	}
+}
+
+/* ── tiddler → LaTeX body ────────────────────────────────────────────── */
+
+function tiddlerToLatex(title, printList, docClass) {
+	var tiddler = $tw.wiki.getTiddler(title);
+	if(!tiddler) return "% Tiddler not found: " + title + "\n";
+
+	var label = titleToLabel(title);
+	var showTitle = isTitleVisible(title);
+
+	// Extract mermaid blocks from raw tiddler text for later reference
+	var rawText = tiddler.fields.text || "";
+	var mermaidBlocks = extractMermaidBlocks(rawText);
+	var mermaidIndex = {val: 0};
+
+	// Render tiddler to HTML using TiddlyWiki's pipeline
+	var html;
+	try {
+		html = $tw.wiki.renderTiddler("text/html", title);
+	} catch(e) {
+		return "% Error rendering tiddler '" + title + "': " + e + "\n";
+	}
+
+	// Parse the HTML and extract just the body content
+	var doc = (new DOMParser()).parseFromString(html, "text/html");
+	var bodyEl = doc.querySelector(".tc-tiddler-body") || doc.body;
+
+	var content = nodeToLatex(bodyEl, printList, mermaidBlocks, mermaidIndex);
+
+	// Build the section heading with the label
+	var heading;
+	if(showTitle) {
+		var sectionCmd = (docClass === "book" || docClass === "report")
+			? "\\chapter"
+			: "\\section";
+		heading = "\n" + sectionCmd + "{" + esc(title) + "}\\label{" + label + "}\n\n";
+	} else {
+		heading = "\n\\phantomsection\\label{" + label + "}\n\n";
+	}
+
+	return heading + content + "\n";
+}
+
+/* ── document assembly ───────────────────────────────────────────────── */
+
+function generateLatex() {
+	// Reset label counters for each fresh export
+	_labelCounters = {};
+
+	var printList = getPrintList();
+	var rawDocClass = getConfig("latex-documentclass", "article");
+	var rawPaper    = getConfig("latex-paper",          "a4paper");
+	var rawFontSize = getConfig("latex-fontsize",        "11pt");
+	var extraPre    = getConfig("latex-extra-preamble",  "");
+
+	// Validate against known-safe values; fall back to defaults on unknown input
+	var SAFE_CLASSES = ["article","report","book","scrartcl","scrreprt","scrbook","memoir","beamer"];
+	var SAFE_PAPERS  = ["a4paper","a5paper","letterpaper","legalpaper","executivepaper","b5paper"];
+	var SAFE_SIZES   = ["8pt","9pt","10pt","11pt","12pt","14pt","17pt","20pt"];
+
+	var docClass = SAFE_CLASSES.indexOf(rawDocClass) !== -1 ? rawDocClass : "article";
+	var paper    = SAFE_PAPERS.indexOf(rawPaper)    !== -1 ? rawPaper    : "a4paper";
+	var fontSize = SAFE_SIZES.indexOf(rawFontSize)  !== -1 ? rawFontSize : "11pt";
+
+	var preamble = [
+		"\\documentclass[" + fontSize + "," + paper + "]{" + docClass + "}",
+		"",
+		"% ----- packages added by PrintRiver LaTeX export -----",
+		"\\usepackage[utf8]{inputenc}",
+		"\\usepackage[T1]{fontenc}",
+		"\\usepackage{amsmath,amssymb,amsthm}",
+		"\\usepackage{graphicx}",
+		"\\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}",
+		"\\usepackage{verbatim}",
+		"\\usepackage[normalem]{ulem}",   // \sout for strikethrough
+		"\\usepackage{booktabs}",
+		"\\usepackage{tikz}",
+		"\\usepackage{xcolor}",
+		""
+	].join("\n");
+
+	if(extraPre.trim()) {
+		preamble += "\n% ----- custom preamble -----\n" + extraPre + "\n";
+	}
+
+	preamble += "\n\\begin{document}\n";
+
+	var body = printList.map(function(title) {
+		return tiddlerToLatex(title, printList, docClass);
+	}).join("\n");
+
+	return preamble + body + "\n\\end{document}\n";
+}
+
+/* ── download helper ─────────────────────────────────────────────────── */
+
+function exportLatex() {
+	var content = generateLatex();
+	var blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+	var url = URL.createObjectURL(blob);
+	var a = document.createElement("a");
+	a.href = url;
+	a.download = "tiddlers-export.tex";
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	URL.revokeObjectURL(url);
+}
+
+})();

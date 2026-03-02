@@ -16,7 +16,8 @@ title: $:/plugins/BTC/PrintRiver/usage
 |!Button |!What it does |
 |☰ (sort) |Reorder or remove tiddlers in the print list by drag-and-drop. |
 |🖨 (print) |Trigger the browser print dialog. |
-|⚙ (tools) |Open the tools panel to adjust fonts, line-height, and header/footer settings. |
+|⬇ (export LaTeX) |Download the current print list as a compilable `.tex` file. |
+|⚙ (tools) |Open the tools panel to adjust fonts, line-height, header/footer settings, and LaTeX options. |
 
 !! Header & Footer
 
@@ -98,3 +99,70 @@ Each tiddler in the print window has a small control bar.  Toggle:
 |`$:/config/PrintRiver/header-footer-fontsize` |Header/footer font size |''(browser default)'' |
 |`$:/config/PrintRiver/header-footer-fontfamily` |Header/footer font family |''(browser default)'' |
 |`$:/config/PrintRiver/header-footer-color` |Header/footer text colour |''(browser default)'' |
+|`$:/config/PrintRiver/latex-documentclass` |LaTeX document class |`article` |
+|`$:/config/PrintRiver/latex-paper` |LaTeX paper size option |`a4paper` |
+|`$:/config/PrintRiver/latex-fontsize` |LaTeX base font size |`11pt` |
+|`$:/config/PrintRiver/latex-extra-preamble` |Custom LaTeX preamble commands |''(empty)'' |
+
+!! LaTeX Export
+
+Click the ''Export LaTeX'' button (⬇) in the print-window toolbar to download a compilable `.tex` file containing all tiddlers in the print list.
+
+!!! What gets converted
+
+|!Content |!LaTeX output |
+|Headings (`!`, `!!`, …) |`\section`, `\subsection`, `\subsubsection`, … |
+|Bold / italic / underline / strikethrough |`\textbf`, `\textit`, `\underline`, `\sout` |
+|Inline code / code blocks |`\texttt{}` / `verbatim` environment |
+|Bullet and numbered lists |`itemize` / `enumerate` environments |
+|Tables |`tabular` environment wrapped in `table` float |
+|`<figure>` elements / `<img>` tags |`figure` environment with `\includegraphics` |
+|KaTeX/MathJax inline math |`$…$` (annotation extracted from rendered HTML) |
+|KaTeX/MathJax display math with `\label{}` |`equation` environment (numbered) |
+|KaTeX/MathJax display math without `\label{}` |`\[…\]` (unnumbered) |
+|Pre-existing `\begin{align}` / `equation` blocks |Passed through as-is |
+|Mermaid diagrams |`tikzpicture` stub; mermaid source preserved as comments |
+|Links to tiddlers in the print list |`\hyperref[sec:…]{…}` cross-references |
+|Links to tiddlers not in the print list |Plain text + `\footnote{Tiddler: …}` |
+|External URLs |`\href{url}{text}` |
+
+!!! Equation labels
+
+To produce a numbered equation, include a `\label{eq:…}` command inside the display-math delimiters of your tiddler, e.g.:
+
+```
+$$\label{eq:energy} E = mc^2$$
+```
+
+This will export as:
+
+```latex
+\begin{equation}
+\label{eq:energy} E = mc^2
+\end{equation}
+```
+
+!!! Mermaid → TikZ
+
+Mermaid diagrams are exported as empty `tikzpicture` environments with the original mermaid source preserved in comments.  Replace the stub with the equivalent TikZ code to include diagrams in the compiled PDF.
+
+!!! LaTeX settings (Tools panel)
+
+Open the ⚙ ''Tools'' menu and scroll to ''LaTeX Export Settings'' to configure:
+
+|!Setting |!Config tiddler |!Default |
+|Document class |`$:/config/PrintRiver/latex-documentclass` |`article` |
+|Paper size |`$:/config/PrintRiver/latex-paper` |`a4paper` |
+|Font size |`$:/config/PrintRiver/latex-fontsize` |`11pt` |
+|Extra preamble |`$:/config/PrintRiver/latex-extra-preamble` |''(empty)'' |
+
+> ''Note:'' Valid document classes are `article`, `report`, and `book`.  For `book` and `report`, top-level tiddlers are mapped to `\chapter` rather than `\section`.
+
+!!! Compiling the exported file
+
+The downloaded `.tex` file requires a standard LaTeX installation (e.g. TeX Live or MiKTeX).  Compile with:
+
+```
+pdflatex tiddlers-export.tex
+pdflatex tiddlers-export.tex   # run twice for cross-references
+```
