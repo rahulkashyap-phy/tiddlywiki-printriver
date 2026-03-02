@@ -1,0 +1,38 @@
+title: $:/plugins/BTC/PrintRiver/release
+
+!! Release Notes
+
+!!! v0.3.1 — Current release
+
+''New: customisable header & footer content''
+
+* Each printed page now supports text in six margin positions: header-left, header-center, header-right, footer-left, footer-center, and footer-right.
+* Content is configured via `$:/config/PrintRiver/header-*` and `$:/config/PrintRiver/footer-*` tiddlers.
+* Dynamic tokens available anywhere in header/footer fields:
+** `<<date>>` — current date (e.g. `02 Mar 2026`)
+** `<<time>>` — current time in 12-hour format with AM/PM (e.g. `9:05 AM`)
+** `<<page>>` — current page number
+** `<<pages>>` — total page count
+* Default values: header-left shows `<<date>> <<time>>`, footer-right shows `<<page>>/<<pages>>`.
+
+''New: header & footer typography controls''
+
+* Three new config tiddlers let you style all six margin positions uniformly:
+** `$:/config/PrintRiver/header-footer-fontsize` — sets `font-size` (e.g. `9pt`)
+** `$:/config/PrintRiver/header-footer-fontfamily` — sets `font-family` (e.g. `Arial, sans-serif`)
+** `$:/config/PrintRiver/header-footer-color` — sets text `color` (e.g. `#555`)
+* All three fields are available in the ''Tools → Header/Footer Style'' table inside the print window.
+* Leaving a field empty inherits the browser/printer default.
+
+''New: usage documentation''
+
+* A ''Usage'' tab is now available in the plugin info panel (Control Panel → Plugins → PrintRiver → Usage).
+* Covers all tokens, all header/footer positions, typography settings, per-tiddler controls, and a complete config tiddler reference.
+
+---
+
+!!! v0.3.0 — Previous release
+
+* Added per-tiddler controls: toggle title, subtitle, and tags visibility; center-align body text; enable page breaks.
+* Added river-level and tiddler-body font size and line-height settings via the Tools panel.
+* Improved toolbar layout with sort (☰), print (🖨), and tools (⚙) buttons.

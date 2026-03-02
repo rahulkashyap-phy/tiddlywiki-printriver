@@ -1,3 +1,28 @@
 title: $:/plugins/BTC/PrintRiver/readme
 
-This plugin adds a Printing ~StoryRiver in a new Window to ~TiddlyWiki5
+!! PrintRiver
+
+''PrintRiver'' adds a dedicated print window to ~TiddlyWiki5. It renders a fully configurable story river — giving you fine-grained control over which tiddlers to print, their order, and how the printed page looks.
+
+!! Features
+
+* ''Dedicated print window'' — opens a clean, toolbar-free view optimised for the browser print dialog.
+* ''Customisable story river'' — choose exactly which tiddlers appear and reorder them by drag-and-drop.
+* ''Header & footer content'' — place dynamic text (date, time, page number, total pages) in any of six page-margin positions using simple `<<token>>` syntax.
+* ''Header & footer styling'' — set the font family, font size, and colour of all margin text from the tools panel.
+* ''River-level typography'' — override the font size and line height for the entire print river.
+* ''Per-tiddler typography'' — separately tune tiddler body font size and line height.
+* ''Per-tiddler controls'' — toggle title / subtitle / tags visibility, enable page breaks, or centre-align body text on a tiddler-by-tiddler basis.
+
+!! Installation
+
+Import the plugin tiddler into your ~TiddlyWiki. After a page reload, the print button (🖨) will appear in every tiddler's toolbar.
+
+!! Quick start
+
+# Click 🖨 in any tiddler's toolbar to add it to the print list and open the print window.
+# Use the ☰ button to reorder or remove tiddlers from the list.
+# Use the ⚙ button to adjust fonts, line height, and header/footer settings.
+# Click the 🖨 button inside the print window to open the browser print dialog.
+
+See the ''Usage'' tab for a full reference of all available options and config tiddlers.
