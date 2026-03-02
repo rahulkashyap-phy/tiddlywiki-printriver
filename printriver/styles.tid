@@ -191,21 +191,39 @@ tags: $:/tags/Stylesheet
 @page {
 	@top-left {
 		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/header-left}}/>;
+		font-size: {{$:/config/PrintRiver/header-footer-fontsize}};
+		font-family: {{$:/config/PrintRiver/header-footer-fontfamily}};
+		color: {{$:/config/PrintRiver/header-footer-color}};
 	}
 	@top-center {
 		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/header-center}}/>;
+		font-size: {{$:/config/PrintRiver/header-footer-fontsize}};
+		font-family: {{$:/config/PrintRiver/header-footer-fontfamily}};
+		color: {{$:/config/PrintRiver/header-footer-color}};
 	}
 	@top-right {
 		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/header-right}}/>;
+		font-size: {{$:/config/PrintRiver/header-footer-fontsize}};
+		font-family: {{$:/config/PrintRiver/header-footer-fontfamily}};
+		color: {{$:/config/PrintRiver/header-footer-color}};
 	}
 	@bottom-left {
 		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/footer-left}}/>;
+		font-size: {{$:/config/PrintRiver/header-footer-fontsize}};
+		font-family: {{$:/config/PrintRiver/header-footer-fontfamily}};
+		color: {{$:/config/PrintRiver/header-footer-color}};
 	}
 	@bottom-center {
 		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/footer-center}}/>;
+		font-size: {{$:/config/PrintRiver/header-footer-fontsize}};
+		font-family: {{$:/config/PrintRiver/header-footer-fontfamily}};
+		color: {{$:/config/PrintRiver/header-footer-color}};
 	}
 	@bottom-right {
 		content: <$macrocall $name="printriver-content" text={{$:/config/PrintRiver/footer-right}}/>;
+		font-size: {{$:/config/PrintRiver/header-footer-fontsize}};
+		font-family: {{$:/config/PrintRiver/header-footer-fontfamily}};
+		color: {{$:/config/PrintRiver/header-footer-color}};
 	}
 }
 

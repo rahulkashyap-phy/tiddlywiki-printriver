@@ -10,7 +10,7 @@ Macro: printriver-content
 Returns a valid CSS `content` property value from a text string that may contain
 the following tokens:
   <<date>>   - current date (DD Mon YYYY), computed at render time
-  <<time>>   - current time (HH:MM), computed at render time
+  <<time>>   - current time (HH:MM AM/PM), computed at render time
   <<page>>   - CSS counter(page)
   <<pages>>  - CSS counter(pages) (total page count)
 */
@@ -24,7 +24,10 @@ exports.run = function(text) {
 	var pad = function(n) { return n < 10 ? "0" + n : String(n); };
 	var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 	var date = pad(now.getDate()) + " " + months[now.getMonth()] + " " + now.getFullYear();
-	var time = pad(now.getHours()) + ":" + pad(now.getMinutes());
+	var hours = now.getHours();
+	var ampm = hours >= 12 ? "PM" : "AM";
+	hours = hours % 12 || 12;
+	var time = hours + ":" + pad(now.getMinutes()) + " " + ampm;
 
 	// Replace date/time tokens with computed values (baked in at render time)
 	text = text.replace(/<<date>>/g, date).replace(/<<time>>/g, time);
